@@ -1,0 +1,14 @@
+{
+  "bien": {
+    "reps_target": 30,
+    "description": ""
+  },
+  "comer": {
+    "reps_target": 30,
+    "description": ""
+  },
+  "hola": {
+    "reps_target": 30,
+    "description": ""
+  }
+}
