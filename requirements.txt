@@ -1,0 +1,30 @@
+# ─── Versiones verificadas para TT2026-A081 (LSM2) ─────────────────────────────
+# Combinación que carga correctamente model.keras (guardado con Keras 3.12).
+# IMPORTANTE: tensorflow 2.15 ships con keras 2.15; instalar keras>=3 después
+# obliga a usar el backend tensorflow vía env var KERAS_BACKEND=tensorflow.
+
+# Núcleo numérico
+numpy==1.24.3
+pandas==2.3.3
+scikit-learn==1.6.1
+
+# Visualización
+matplotlib==3.9.4
+seaborn==0.13.2
+
+# Deep learning (orden de instalación importante)
+tensorflow==2.15.0
+keras>=3.0,<4.0          # se instala después de TF para sobrescribir keras 2.15
+
+# Conversión y runtime web
+tf2onnx==1.16.1          # .keras -> .onnx (requerido para frontend Next.js)
+onnxruntime==1.19.2      # inferencia ONNX en Python (para verificación)
+
+# Captura de datos
+mediapipe==0.10.9
+opencv-python==4.9.0.80
+
+# Notebook
+nbformat==5.10.4
+nbclient==0.10.2
+jupyter

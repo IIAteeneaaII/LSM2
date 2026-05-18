@@ -1,70 +1,20 @@
 {
-  "bien": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "comer": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "transporte": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "taxi": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "personas cuantas": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "dias cuantos": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "hotel": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "reservacion": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "1": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "2": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "3": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "4": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "5": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "6": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "7": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "8": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "9": {
-    "reps_target": 30,
-    "description": ""
-  }
+  "1": { "reps_target": 30, "description": "Dígito uno (dactilología numérica LSM)" },
+  "2": { "reps_target": 30, "description": "Dígito dos" },
+  "3": { "reps_target": 30, "description": "Dígito tres" },
+  "4": { "reps_target": 30, "description": "Dígito cuatro" },
+  "5": { "reps_target": 30, "description": "Dígito cinco" },
+  "6": { "reps_target": 30, "description": "Dígito seis" },
+  "7": { "reps_target": 30, "description": "Dígito siete" },
+  "8": { "reps_target": 30, "description": "Dígito ocho" },
+  "9": { "reps_target": 30, "description": "Dígito nueve" },
+  "a": { "reps_target": 50, "description": "Letra A (única letra del corpus actual)" },
+  "bien":             { "reps_target": 30, "description": "Estado 'bien'" },
+  "comer":            { "reps_target": 30, "description": "Acción 'comer'" },
+  "dias cuantos":     { "reps_target": 30, "description": "Pregunta '¿cuántos días?'" },
+  "hotel":            { "reps_target": 30, "description": "Sustantivo 'hotel'" },
+  "personas cuantas": { "reps_target": 30, "description": "Pregunta '¿cuántas personas?'" },
+  "reservacion":      { "reps_target": 30, "description": "Sustantivo 'reservación'" },
+  "taxi":             { "reps_target": 30, "description": "Sustantivo 'taxi'" },
+  "transporte":       { "reps_target": 30, "description": "Sustantivo 'transporte'" }
 }
