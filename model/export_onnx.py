@@ -24,7 +24,7 @@ import tensorflow as tf
 import onnx
 
 KERAS_PATH   = "model.keras"
-ONNX_PATH    = "model.onnx"
+ONNX_PATH    = "huespedes.onnx"
 TOTAL_FRAMES = 90
 FEATURE_DIM  = 168
 OPSET        = 17  # compatible con onnxruntime moderno y TouchDesigner
