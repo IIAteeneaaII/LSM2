@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import tf2onnx; print\\(tf2onnx.__version__\\)\")",
+      "Bash(pip install *)",
+      "Bash(python export_onnx.py)"
+    ]
+  }
+}

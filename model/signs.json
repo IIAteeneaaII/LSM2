@@ -1,70 +1,18 @@
 {
-  "bien": {
-    "reps_target": 30,
+  "cancelar": {
+    "reps_target": 25,
     "description": ""
   },
-  "comer": {
-    "reps_target": 30,
+  "no": {
+    "reps_target": 25,
     "description": ""
   },
-  "transporte": {
-    "reps_target": 30,
+  "si": {
+    "reps_target": 25,
     "description": ""
   },
-  "taxi": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "personas cuantas": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "dias cuantos": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "hotel": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "reservacion": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "1": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "2": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "3": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "4": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "5": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "6": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "7": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "8": {
-    "reps_target": 30,
-    "description": ""
-  },
-  "9": {
-    "reps_target": 30,
+  "corregir": {
+    "reps_target": 25,
     "description": ""
   }
 }
