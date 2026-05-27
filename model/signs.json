@@ -11,11 +11,31 @@
     "reps_target": 50,
     "description": ""
   },
-  "adulto": {
+  "4": {
     "reps_target": 50,
     "description": ""
   },
-  "nino": {
+  "5": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "6": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "7": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "8": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "9": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "0": {
     "reps_target": 50,
     "description": ""
   }

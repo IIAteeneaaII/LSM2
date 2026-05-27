@@ -31,7 +31,7 @@ import onnx
 KERAS_PATH   = "model.keras"
 ONNX_PATH    = "huespedes.onnx"
 TOTAL_FRAMES = 90
-FEATURE_DIM  = 168
+FEATURE_DIM  = 63
 OPSET        = 17
 
 

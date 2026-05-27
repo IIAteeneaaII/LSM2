@@ -6,7 +6,9 @@
       "Bash(python export_onnx.py)",
       "Bash(rm -f model.keras model.onnx label_map.json signs.json)",
       "Bash(rm -rf data/cancelar data/corregir data/no data/si)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('model/sign_data_collector.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('model/train_model.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('model/sign_classifier.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('model/export_onnx.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK: los 4 archivos compilan'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('model/sign_data_collector.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('model/train_model.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('model/sign_classifier.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK: los 3 archivos compilan'\\)\")"
     ]
   }
 }

@@ -36,7 +36,7 @@ DATA_DIR       = "data"
 MODEL_PATH     = "model.keras"
 LABEL_MAP_PATH = "label_map.json"
 TOTAL_FRAMES   = 90
-FEATURE_DIM    = 168     # 42 pose + 63 mano-izq + 63 mano-der
+FEATURE_DIM    = 63      # solo mano izquierda (21 landmarks x,y,z)
 TEST_SIZE      = 0.2
 RANDOM_SEED    = 42
 BATCH_SIZE     = 16
@@ -80,7 +80,7 @@ def load_dataset():
             print(f"  [!] Sin muestras en '{name}', se omite.")
             continue
         for fname in files:
-            seq = np.load(os.path.join(sign_dir, fname))  # (90, 168)
+            seq = np.load(os.path.join(sign_dir, fname))  # (90, 63)
             if seq.shape != (TOTAL_FRAMES, FEATURE_DIM):
                 print(f"  [!] Shape inesperado en {fname}: {seq.shape}, se omite.")
                 continue

@@ -11,15 +11,13 @@
   Estructura del dataset generado:
       data/
         ├── hola/
-        │   ├── rep_000.npy   # shape (90, 168)
+        │   ├── rep_000.npy   # shape (90, 63)
         │   └── ...
         └── gracias/
             └── ...
 
-  Cada frame contiene 168 valores:
-    -  42 valores: pose cintura-para-arriba  (14 landmarks x,y,z)
+  Cada frame contiene 63 valores:
     -  63 valores: mano izquierda normalizada (21 landmarks x,y,z)
-    -  63 valores: mano derecha normalizada   (21 landmarks x,y,z)
 ========================================================
 """
 
@@ -36,27 +34,10 @@ import urllib.request
 
 # ── Modelos MediaPipe (Tasks API) ─────────────────────────────────────────────
 HAND_MODEL     = "hand_landmarker.task"
-POSE_MODEL     = "pose_landmarker_lite.task"
 HAND_MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/"
     "hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 )
-POSE_MODEL_URL = (
-    "https://storage.googleapis.com/mediapipe-models/"
-    "pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
-)
-
-# ── Índices de pose para cintura-para-arriba ───────────────────────────────────
-# MediaPipe Pose: 11-22 brazos/tronco, 23-24 caderas
-POSE_UPPER_INDICES = list(range(11, 25))   # 14 landmarks
-
-POSE_UPPER_CONNECTIONS = [
-    (11, 12),
-    (11, 13), (13, 15),
-    (12, 14), (14, 16),
-    (11, 23), (12, 24),
-    (23, 24),
-]
 
 HAND_CONNECTIONS = frozenset([
     (0, 1), (1, 2), (2, 3), (3, 4),
@@ -82,20 +63,10 @@ REPS_DEFAULT  = 50
 DATA_DIR      = "data"
 SIGNS_FILE    = "signs.json"
 
-NUM_POSE_LM  = len(POSE_UPPER_INDICES)      # 14
 NUM_HAND_LM  = 21
 COORDS       = 3
-POSE_DIM     = NUM_POSE_LM * COORDS         # 42
 HAND_DIM     = NUM_HAND_LM * COORDS         # 63
-FEATURE_DIM  = POSE_DIM + HAND_DIM * 2      # 168
-
-# ── Filtro de manos por dueño (evita manos de personas detrás) ───────────────
-# Una mano se acepta solo si su muñeca (LM0) está cerca de alguna de las
-# muñecas del pose principal (LM15 izq, LM16 der). Distancia en unidades
-# normalizadas 0-1 del frame.
-HAND_OWNER_MAX_DIST = 0.18
-POSE_WRIST_LEFT     = 15
-POSE_WRIST_RIGHT    = 16
+FEATURE_DIM  = HAND_DIM                     # 63 — solo mano izquierda
 
 # ── Colores (BGR) ──────────────────────────────────────────────────────────────
 C_GREEN   = (72, 199, 142)
@@ -128,14 +99,14 @@ class AppState:
 # ── Descarga de modelos ────────────────────────────────────────────────────────
 
 def ensure_models():
-    for path, url in [(HAND_MODEL, HAND_MODEL_URL), (POSE_MODEL, POSE_MODEL_URL)]:
+    for path, url in [(HAND_MODEL, HAND_MODEL_URL)]:
         if not os.path.exists(path):
             print(f"Descargando {path}...")
             urllib.request.urlretrieve(url, path)
             print(f"  OK: {path}")
 
 
-def create_detectors():
+def create_detector():
     hand_opts = mp_vision.HandLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=HAND_MODEL),
         running_mode=mp_vision.RunningMode.VIDEO,
@@ -144,89 +115,36 @@ def create_detectors():
         min_hand_presence_confidence=0.5,
         min_tracking_confidence=0.5,
     )
-    pose_opts = mp_vision.PoseLandmarkerOptions(
-        base_options=mp_python.BaseOptions(model_asset_path=POSE_MODEL),
-        running_mode=mp_vision.RunningMode.VIDEO,
-        num_poses=1,
-        min_pose_detection_confidence=0.5,
-        min_pose_presence_confidence=0.5,
-        min_tracking_confidence=0.5,
-    )
-    return (mp_vision.HandLandmarker.create_from_options(hand_opts),
-            mp_vision.PoseLandmarker.create_from_options(pose_opts))
+    return mp_vision.HandLandmarker.create_from_options(hand_opts)
 
 
 # ── Extracción de features ────────────────────────────────────────────────────
 
-def extract_pose_upper(pose_result):
+def extract_left_hand(hand_result):
     """
-    14 landmarks cintura-para-arriba, normalizados:
-      centro = midpoint caderas, escala = distancia entre hombros.
-    Devuelve (42,).
-    """
-    if not pose_result.pose_landmarks:
-        return np.zeros(POSE_DIM, dtype=np.float32)
-    lm = pose_result.pose_landmarks[0]
-    pts = np.array(
-        [[lm[i].x, lm[i].y, lm[i].z] for i in POSE_UPPER_INDICES],
-        dtype=np.float32,
-    )
-    # índices locales: 0→LM11 hombro-izq, 1→LM12 hombro-der
-    #                 12→LM23 cadera-izq, 13→LM24 cadera-der
-    hip_mid = (pts[12] + pts[13]) / 2.0
-    pts -= hip_mid
-    shoulder_dist = np.linalg.norm(pts[0] - pts[1])
-    if shoulder_dist > 1e-6:
-        pts /= shoulder_dist
-    return pts.flatten()
-
-
-def _pose_wrist(pose_result, idx):
-    if not pose_result.pose_landmarks:
-        return None
-    lm = pose_result.pose_landmarks[0]
-    return np.array([lm[idx].x, lm[idx].y], dtype=np.float32)
-
-
-def extract_hands(hand_result, pose_result=None):
-    """
-    Normaliza las dos manos por separado:
+    Normaliza la mano izquierda:
       centro = muñeca, escala = dist muñeca→MCP-medio.
-    Si pose_result se pasa, descarta manos cuya muñeca no esté cerca de la
-    muñeca correspondiente del pose principal (filtro de "dueño").
-    Devuelve (left(63,), right(63,), left_valid, right_valid).
+    Devuelve (left(63,), left_valid).
+    Si hay varias manos detectadas, se queda con la primera etiquetada "Left".
     """
-    left  = np.zeros(HAND_DIM, dtype=np.float32)
-    right = np.zeros(HAND_DIM, dtype=np.float32)
-    left_valid  = False
-    right_valid = False
-
-    wrist_l = _pose_wrist(pose_result, POSE_WRIST_LEFT)  if pose_result else None
-    wrist_r = _pose_wrist(pose_result, POSE_WRIST_RIGHT) if pose_result else None
+    left = np.zeros(HAND_DIM, dtype=np.float32)
+    left_valid = False
 
     for lm_list, handedness_list in zip(hand_result.hand_landmarks,
                                         hand_result.handedness):
         label = handedness_list[0].category_name   # "Left" o "Right"
-        raw_xy = np.array([lm_list[0].x, lm_list[0].y], dtype=np.float32)
-
-        if wrist_l is not None or wrist_r is not None:
-            d_l = np.linalg.norm(raw_xy - wrist_l) if wrist_l is not None else 1e9
-            d_r = np.linalg.norm(raw_xy - wrist_r) if wrist_r is not None else 1e9
-            if min(d_l, d_r) > HAND_OWNER_MAX_DIST:
-                continue  # mano huérfana — probablemente de otra persona
+        if label != "Left":
+            continue
 
         pts = np.array([[lm.x, lm.y, lm.z] for lm in lm_list], dtype=np.float32)
         pts -= pts[0].copy()
         scale = np.linalg.norm(pts[9])
         if scale > 1e-6:
             pts /= scale
-        if label == "Left":
-            left = pts.flatten()
-            left_valid = True
-        else:
-            right = pts.flatten()
-            right_valid = True
-    return left, right, left_valid, right_valid
+        left = pts.flatten()
+        left_valid = True
+        break
+    return left, left_valid
 
 
 # ── Gestión del catálogo de señas ──────────────────────────────────────────────
@@ -260,37 +178,27 @@ def put_text(frame, text, pos, size=0.7, color=C_WHITE, thickness=1, shadow=True
                 cv2.FONT_HERSHEY_SIMPLEX, size, color, thickness, cv2.LINE_AA)
 
 
-def draw_pose_upper(frame, pose_result, w, h):
-    if not pose_result.pose_landmarks:
-        return
-    lm = pose_result.pose_landmarks[0]
-    pts = {i: (int(lm[i].x * w), int(lm[i].y * h)) for i in POSE_UPPER_INDICES}
-    for a, b in POSE_UPPER_CONNECTIONS:
-        cv2.line(frame, pts[a], pts[b], (160, 160, 160), 2, cv2.LINE_AA)
-    for idx, (x, y) in pts.items():
-        cv2.circle(frame, (x, y), 6, C_CYAN, -1, cv2.LINE_AA)
-        cv2.circle(frame, (x, y), 6, C_WHITE, 1, cv2.LINE_AA)
-
-
-def draw_all_hands(frame, hand_result, w, h):
-    for lm_list in hand_result.hand_landmarks:
+def draw_left_hand(frame, hand_result, w, h):
+    for lm_list, handedness_list in zip(hand_result.hand_landmarks,
+                                        hand_result.handedness):
+        if handedness_list[0].category_name != "Left":
+            continue
         pts = {i: (int(lm.x * w), int(lm.y * h)) for i, lm in enumerate(lm_list)}
         for a, b in HAND_CONNECTIONS:
             cv2.line(frame, pts[a], pts[b], (200, 200, 200), 1, cv2.LINE_AA)
         for idx, (x, y) in pts.items():
             cv2.circle(frame, (x, y), 5, ZONE_COLOR.get(idx, C_WHITE), -1, cv2.LINE_AA)
             cv2.circle(frame, (x, y), 5, C_WHITE, 1, cv2.LINE_AA)
+        break
 
 
-def draw_detection_status(frame, pose_ok, left_ok, right_ok):
+def draw_detection_status(frame, left_ok):
     w = frame.shape[1]
-    items = [("pose", pose_ok), ("mano-I", left_ok), ("mano-D", right_ok)]
+    color = C_GREEN if left_ok else C_RED
     x0 = w - 115
-    for i, (label, ok) in enumerate(items):
-        color = C_GREEN if ok else C_RED
-        y = 65 + i * 22
-        cv2.circle(frame, (x0, y), 6, color, -1)
-        put_text(frame, label, (x0 + 12, y + 5), size=0.45, color=color, shadow=False)
+    y = 65
+    cv2.circle(frame, (x0, y), 6, color, -1)
+    put_text(frame, "mano-I", (x0 + 12, y + 5), size=0.45, color=color, shadow=False)
 
 
 def draw_hud(frame, state, sign_name, rep_done, reps_target,
@@ -425,12 +333,12 @@ def capture_loop(sign_name: str, meta: dict):
     sign_dir    = os.path.join(DATA_DIR, sign_name)
     os.makedirs(sign_dir, exist_ok=True)
 
-    hand_det, pose_det = create_detectors()
+    hand_det = create_detector()
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("ERROR: No se puede abrir la camara.")
-        hand_det.close(); pose_det.close()
+        hand_det.close()
         return
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
@@ -446,7 +354,7 @@ def capture_loop(sign_name: str, meta: dict):
     start_ns        = time.monotonic_ns()
 
     print(f"\n── Grabando: '{sign_name}'  ({reps_done}/{reps_target} reps) ──")
-    print(f"   Features/frame: {FEATURE_DIM}  (pose={POSE_DIM} + mano-I={HAND_DIM} + mano-D={HAND_DIM})")
+    print(f"   Features/frame: {FEATURE_DIM}  (mano-I={HAND_DIM})")
     print("   [ESPACIO] iniciar repeticion   [Q] volver al menu\n")
 
     while True:
@@ -468,19 +376,14 @@ def capture_loop(sign_name: str, meta: dict):
         timestamp_ms = (time.monotonic_ns() - start_ns) // 1_000_000
 
         hand_result = hand_det.detect_for_video(mp_image, timestamp_ms)
-        pose_result = pose_det.detect_for_video(mp_image, timestamp_ms)
 
-        # ── Extraer features (168,) con filtro de manos por dueño ──
-        pose_feat                                = extract_pose_upper(pose_result)
-        left_feat, right_feat, left_ok, right_ok = extract_hands(hand_result, pose_result)
-        keypoints                                = np.concatenate([pose_feat, left_feat, right_feat])
-
-        pose_ok = bool(pose_result.pose_landmarks)
+        # ── Extraer features (63,) solo mano izquierda ──
+        left_feat, left_ok = extract_left_hand(hand_result)
+        keypoints          = left_feat
 
         # ── Dibujar ──
-        draw_pose_upper(frame, pose_result, w, h)
-        draw_all_hands(frame, hand_result, w, h)
-        draw_detection_status(frame, pose_ok, left_ok, right_ok)
+        draw_left_hand(frame, hand_result, w, h)
+        draw_detection_status(frame, left_ok)
 
         # ── Maquina de estados ──
         if state == AppState.COUNTDOWN:
@@ -534,7 +437,6 @@ def capture_loop(sign_name: str, meta: dict):
     cap.release()
     cv2.destroyAllWindows()
     hand_det.close()
-    pose_det.close()
 
 
 # ── Punto de entrada ───────────────────────────────────────────────────────────
