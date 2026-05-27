@@ -1,14 +1,14 @@
 {
-  "1 adulto": {
-    "reps_target": 30,
+  "1": {
+    "reps_target": 50,
     "description": ""
   },
-  "1 nino": {
-    "reps_target": 30,
+  "2": {
+    "reps_target": 50,
     "description": ""
   },
-  "2 adultos": {
-    "reps_target": 30,
+  "3": {
+    "reps_target": 50,
     "description": ""
   }
 }
