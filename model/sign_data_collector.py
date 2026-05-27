@@ -89,6 +89,14 @@ POSE_DIM     = NUM_POSE_LM * COORDS         # 42
 HAND_DIM     = NUM_HAND_LM * COORDS         # 63
 FEATURE_DIM  = POSE_DIM + HAND_DIM * 2      # 168
 
+# ── Filtro de manos por dueño (evita manos de personas detrás) ───────────────
+# Una mano se acepta solo si su muñeca (LM0) está cerca de alguna de las
+# muñecas del pose principal (LM15 izq, LM16 der). Distancia en unidades
+# normalizadas 0-1 del frame.
+HAND_OWNER_MAX_DIST = 0.18
+POSE_WRIST_LEFT     = 15
+POSE_WRIST_RIGHT    = 16
+
 # ── Colores (BGR) ──────────────────────────────────────────────────────────────
 C_GREEN   = (72, 199, 142)
 C_BLUE    = (237, 139, 55)
@@ -173,17 +181,40 @@ def extract_pose_upper(pose_result):
     return pts.flatten()
 
 
-def extract_hands(hand_result):
+def _pose_wrist(pose_result, idx):
+    if not pose_result.pose_landmarks:
+        return None
+    lm = pose_result.pose_landmarks[0]
+    return np.array([lm[idx].x, lm[idx].y], dtype=np.float32)
+
+
+def extract_hands(hand_result, pose_result=None):
     """
     Normaliza las dos manos por separado:
       centro = muñeca, escala = dist muñeca→MCP-medio.
-    Devuelve (left(63,), right(63,)).
+    Si pose_result se pasa, descarta manos cuya muñeca no esté cerca de la
+    muñeca correspondiente del pose principal (filtro de "dueño").
+    Devuelve (left(63,), right(63,), left_valid, right_valid).
     """
     left  = np.zeros(HAND_DIM, dtype=np.float32)
     right = np.zeros(HAND_DIM, dtype=np.float32)
+    left_valid  = False
+    right_valid = False
+
+    wrist_l = _pose_wrist(pose_result, POSE_WRIST_LEFT)  if pose_result else None
+    wrist_r = _pose_wrist(pose_result, POSE_WRIST_RIGHT) if pose_result else None
+
     for lm_list, handedness_list in zip(hand_result.hand_landmarks,
                                         hand_result.handedness):
         label = handedness_list[0].category_name   # "Left" o "Right"
+        raw_xy = np.array([lm_list[0].x, lm_list[0].y], dtype=np.float32)
+
+        if wrist_l is not None or wrist_r is not None:
+            d_l = np.linalg.norm(raw_xy - wrist_l) if wrist_l is not None else 1e9
+            d_r = np.linalg.norm(raw_xy - wrist_r) if wrist_r is not None else 1e9
+            if min(d_l, d_r) > HAND_OWNER_MAX_DIST:
+                continue  # mano huérfana — probablemente de otra persona
+
         pts = np.array([[lm.x, lm.y, lm.z] for lm in lm_list], dtype=np.float32)
         pts -= pts[0].copy()
         scale = np.linalg.norm(pts[9])
@@ -191,9 +222,11 @@ def extract_hands(hand_result):
             pts /= scale
         if label == "Left":
             left = pts.flatten()
+            left_valid = True
         else:
             right = pts.flatten()
-    return left, right
+            right_valid = True
+    return left, right, left_valid, right_valid
 
 
 # ── Gestión del catálogo de señas ──────────────────────────────────────────────
@@ -437,20 +470,17 @@ def capture_loop(sign_name: str, meta: dict):
         hand_result = hand_det.detect_for_video(mp_image, timestamp_ms)
         pose_result = pose_det.detect_for_video(mp_image, timestamp_ms)
 
-        # ── Estado de deteccion ──
-        pose_ok  = bool(pose_result.pose_landmarks)
-        left_ok  = any(h[0].category_name == "Left"  for h in hand_result.handedness)
-        right_ok = any(h[0].category_name == "Right" for h in hand_result.handedness)
+        # ── Extraer features (168,) con filtro de manos por dueño ──
+        pose_feat                                = extract_pose_upper(pose_result)
+        left_feat, right_feat, left_ok, right_ok = extract_hands(hand_result, pose_result)
+        keypoints                                = np.concatenate([pose_feat, left_feat, right_feat])
+
+        pose_ok = bool(pose_result.pose_landmarks)
 
         # ── Dibujar ──
         draw_pose_upper(frame, pose_result, w, h)
         draw_all_hands(frame, hand_result, w, h)
         draw_detection_status(frame, pose_ok, left_ok, right_ok)
-
-        # ── Extraer features (168,) ──
-        pose_feat        = extract_pose_upper(pose_result)
-        left_feat, right_feat = extract_hands(hand_result)
-        keypoints        = np.concatenate([pose_feat, left_feat, right_feat])
 
         # ── Maquina de estados ──
         if state == AppState.COUNTDOWN:

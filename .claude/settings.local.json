@@ -5,7 +5,8 @@
       "Bash(pip install *)",
       "Bash(python export_onnx.py)",
       "Bash(rm -f model.keras model.onnx label_map.json signs.json)",
-      "Bash(rm -rf data/cancelar data/corregir data/no data/si)"
+      "Bash(rm -rf data/cancelar data/corregir data/no data/si)",
+      "Bash(python -c ' *)"
     ]
   }
 }

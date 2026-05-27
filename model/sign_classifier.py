@@ -66,9 +66,25 @@ TOTAL_FRAMES    = 90
 FEATURE_DIM     = 168   # 42 pose + 63 mano-izq + 63 mano-der
 INFERENCE_EVERY = 90
 RESULT_SHOW_SEC = 2.5
-CONF_THRESHOLD  = 0.55
 DETECT_W        = 320
 DETECT_H        = 240
+
+# ── Rechazo de predicciones débiles / sin seña ──────────────────────────────
+# Si menos del MIN_HAND_RATIO del buffer tiene al menos una mano válida,
+# o la confianza de la red es menor a MIN_CONFIDENCE, o el margen entre la
+# clase top y la 2da es menor a MIN_MARGIN, la predicción se descarta y
+# se muestra "—" en lugar de inventar una letra.
+MIN_HAND_RATIO  = 0.40
+MIN_CONFIDENCE  = 0.70
+MIN_MARGIN      = 0.20
+
+# ── Filtro de manos por dueño (rechaza manos de personas detrás) ───────────
+# Una mano es válida solo si su muñeca (landmark 0) está a menos de
+# HAND_OWNER_MAX_DIST (en unidades normalizadas 0-1 del frame) de la muñeca
+# correspondiente del pose principal (LM15 izq, LM16 der).
+HAND_OWNER_MAX_DIST = 0.18
+POSE_WRIST_LEFT     = 15
+POSE_WRIST_RIGHT    = 16
 
 # ── Paleta de colores (BGR) ───────────────────────────────────────────────────
 BG       = (28, 20, 38)
@@ -151,12 +167,41 @@ def extract_pose_upper(pose_result):
     return pts.flatten()
 
 
-def extract_hands(hand_result):
+def _pose_wrist(pose_result, idx):
+    if not pose_result.pose_landmarks:
+        return None
+    lm = pose_result.pose_landmarks[0]
+    return np.array([lm[idx].x, lm[idx].y], dtype=np.float32)
+
+
+def extract_hands(hand_result, pose_result=None):
+    """Devuelve (left(63,), right(63,), left_valid, right_valid).
+
+    Si pose_result se proporciona, descarta manos cuya muñeca no esté cerca
+    de la muñeca correspondiente del pose principal — esto evita usar manos
+    de personas que pasan por atrás.
+    """
     left  = np.zeros(21 * 3, dtype=np.float32)
     right = np.zeros(21 * 3, dtype=np.float32)
+    left_valid  = False
+    right_valid = False
+
+    wrist_l = _pose_wrist(pose_result, POSE_WRIST_LEFT)  if pose_result else None
+    wrist_r = _pose_wrist(pose_result, POSE_WRIST_RIGHT) if pose_result else None
+
     for lm_list, handedness_list in zip(hand_result.hand_landmarks,
                                         hand_result.handedness):
         label = handedness_list[0].category_name
+        raw_xy = np.array([lm_list[0].x, lm_list[0].y], dtype=np.float32)
+
+        # Filtro por dueño: aceptamos la mano si está cerca de cualquiera de
+        # las dos muñecas del pose principal.
+        if wrist_l is not None or wrist_r is not None:
+            d_l = np.linalg.norm(raw_xy - wrist_l) if wrist_l is not None else 1e9
+            d_r = np.linalg.norm(raw_xy - wrist_r) if wrist_r is not None else 1e9
+            if min(d_l, d_r) > HAND_OWNER_MAX_DIST:
+                continue  # mano huérfana — probablemente de otra persona
+
         pts = np.array([[lm.x, lm.y, lm.z] for lm in lm_list], dtype=np.float32)
         pts -= pts[0].copy()
         scale = np.linalg.norm(pts[9])
@@ -164,9 +209,11 @@ def extract_hands(hand_result):
             pts /= scale
         if label == "Left":
             left = pts.flatten()
+            left_valid = True
         else:
             right = pts.flatten()
-    return left, right
+            right_valid = True
+    return left, right, left_valid, right_valid
 
 
 # ── Helpers de dibujo ─────────────────────────────────────────────────────────
@@ -238,9 +285,29 @@ def draw_pose_upper(frame, pose_result, w, h):
         cv2.circle(frame, (x, y), 6, WHITE, 1, cv2.LINE_AA)
 
 
-def draw_all_hands(frame, hand_result, w, h):
+def draw_all_hands(frame, hand_result, w, h, pose_result=None):
+    wrist_l = _pose_wrist(pose_result, POSE_WRIST_LEFT)  if pose_result else None
+    wrist_r = _pose_wrist(pose_result, POSE_WRIST_RIGHT) if pose_result else None
+
     for lm_list in hand_result.hand_landmarks:
+        owned = True
+        if wrist_l is not None or wrist_r is not None:
+            raw_xy = np.array([lm_list[0].x, lm_list[0].y], dtype=np.float32)
+            d_l = np.linalg.norm(raw_xy - wrist_l) if wrist_l is not None else 1e9
+            d_r = np.linalg.norm(raw_xy - wrist_r) if wrist_r is not None else 1e9
+            owned = min(d_l, d_r) <= HAND_OWNER_MAX_DIST
+
         pts = {i: (int(lm.x * w), int(lm.y * h)) for i, lm in enumerate(lm_list)}
+
+        if not owned:
+            # mano huérfana: la dibujamos tenue en rojo para indicar que la
+            # vemos pero la descartamos
+            for a, b in HAND_CONNECTIONS:
+                cv2.line(frame, pts[a], pts[b], RED_SOFT, 1, cv2.LINE_AA)
+            for _, (x, y) in pts.items():
+                cv2.circle(frame, (x, y), 3, RED_SOFT, -1, cv2.LINE_AA)
+            continue
+
         for a, b in HAND_CONNECTIONS:
             cv2.line(frame, pts[a], pts[b], DIM, 4, cv2.LINE_AA)
             cv2.line(frame, pts[a], pts[b], (160, 155, 175), 1, cv2.LINE_AA)
@@ -430,10 +497,12 @@ def run():
     cap.set(cv2.CAP_PROP_FPS, 30)
 
     frame_buffer   = collections.deque(maxlen=TOTAL_FRAMES)
+    hand_presence  = collections.deque(maxlen=TOTAL_FRAMES)  # 1 si alguna mano válida
     pred_history   = collections.deque(maxlen=8)
     current_label  = None
     current_conf   = 0.0
     last_probs     = np.ones(len(label_map), dtype=np.float32) / len(label_map)
+    last_reject    = ""        # razón del último rechazo (para mostrar)
     shown_at       = -999.0
     frame_count    = 0
     last_inf_frame = 0
@@ -463,42 +532,56 @@ def run():
         hand_result = hand_det.detect_for_video(mp_image, timestamp_ms)
         pose_result = pose_det.detect_for_video(mp_image, timestamp_ms)
 
-        pose_ok  = bool(pose_result.pose_landmarks)
-        left_ok  = any(h[0].category_name == "Left"  for h in hand_result.handedness)
-        right_ok = any(h[0].category_name == "Right" for h in hand_result.handedness)
+        pose_ok = bool(pose_result.pose_landmarks)
 
-        # ── Dibujar ──
+        # ── Extraer features (168,) con filtro de manos por dueño ──
+        pose_feat                                = extract_pose_upper(pose_result)
+        left_feat, right_feat, left_ok, right_ok = extract_hands(hand_result, pose_result)
+        keypoints                                = np.concatenate([pose_feat, left_feat, right_feat])
+
+        # ── Dibujar (manos huérfanas se pintan tenues) ──
         draw_pose_upper(frame, pose_result, w, h)
-        draw_all_hands(frame, hand_result, w, h)
-
-        # ── Extraer features (168,) ──
-        pose_feat        = extract_pose_upper(pose_result)
-        left_feat, right_feat = extract_hands(hand_result)
-        keypoints        = np.concatenate([pose_feat, left_feat, right_feat])
+        draw_all_hands(frame, hand_result, w, h, pose_result)
 
         frame_buffer.append(keypoints)
+        hand_presence.append(1 if (left_ok or right_ok) else 0)
         frame_count += 1
 
         # ── Inferencia cada INFERENCE_EVERY frames ──
         if (len(frame_buffer) == TOTAL_FRAMES
                 and frame_count - last_inf_frame >= INFERENCE_EVERY):
-            seq   = np.array(frame_buffer, dtype=np.float32)[np.newaxis]
-            probs = model.predict(seq, verbose=0)[0]
-            idx   = int(np.argmax(probs))
-            conf  = float(probs[idx])
             last_inf_frame = frame_count
-            last_probs     = probs
+            hand_ratio     = sum(hand_presence) / TOTAL_FRAMES
 
-            prob_str = "  ".join(
-                f"{label_map[i]}={probs[i]*100:.0f}%" for i in range(len(label_map))
-            )
-            print(f"[pred] {prob_str}  -> {label_map[idx]} ({conf*100:.0f}%)")
+            if hand_ratio < MIN_HAND_RATIO:
+                last_probs  = np.zeros(len(label_map), dtype=np.float32)
+                last_reject = f"sin manos ({hand_ratio*100:.0f}% del buffer)"
+                print(f"[skip] {last_reject}")
+            else:
+                seq   = np.array(frame_buffer, dtype=np.float32)[np.newaxis]
+                probs = model.predict(seq, verbose=0)[0]
+                idx   = int(np.argmax(probs))
+                conf  = float(probs[idx])
+                last_probs = probs
 
-            if conf >= CONF_THRESHOLD:
-                current_label = label_map[idx]
-                current_conf  = conf
-                shown_at      = now
-                pred_history.append((current_label, current_conf))
+                sorted_probs = np.sort(probs)[::-1]
+                margin       = float(sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) > 1 else 1.0
+
+                prob_str = "  ".join(
+                    f"{label_map[i]}={probs[i]*100:.0f}%" for i in range(len(label_map))
+                )
+                print(f"[pred] {prob_str}  -> {label_map[idx]} ({conf*100:.0f}%, margin={margin*100:.0f}%)")
+
+                if conf < MIN_CONFIDENCE:
+                    last_reject = f"baja confianza ({conf*100:.0f}%)"
+                elif margin < MIN_MARGIN:
+                    last_reject = f"red insegura (margen {margin*100:.0f}%)"
+                else:
+                    current_label = label_map[idx]
+                    current_conf  = conf
+                    shown_at      = now
+                    last_reject   = ""
+                    pred_history.append((current_label, current_conf))
 
         # ── UI ──
         if not pose_ok:
@@ -506,6 +589,9 @@ def run():
 
         if current_label and (now - shown_at) < RESULT_SHOW_SEC:
             draw_prediction_card(frame, current_label, current_conf, shown_at, now)
+        elif last_reject:
+            text_centered(frame, f"— {last_reject}", h // 2 + 80,
+                          size=0.55, color=GRAY, shadow=False)
 
         if show_debug:
             draw_debug_probs(frame, last_probs, label_map)
