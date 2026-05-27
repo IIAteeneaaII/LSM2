@@ -10,5 +10,13 @@
   "3": {
     "reps_target": 50,
     "description": ""
+  },
+  "adulto": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "nino": {
+    "reps_target": 50,
+    "description": ""
   }
 }
