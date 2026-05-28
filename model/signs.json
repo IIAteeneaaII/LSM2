@@ -1,41 +1,49 @@
 {
-  "1": {
+  "enero": {
     "reps_target": 50,
     "description": ""
   },
-  "2": {
+  "febrero": {
     "reps_target": 50,
     "description": ""
   },
-  "3": {
+  "marzo": {
     "reps_target": 50,
     "description": ""
   },
-  "4": {
+  "abril": {
     "reps_target": 50,
     "description": ""
   },
-  "5": {
+  "mayo": {
     "reps_target": 50,
     "description": ""
   },
-  "6": {
+  "junio": {
     "reps_target": 50,
     "description": ""
   },
-  "7": {
+  "julio": {
     "reps_target": 50,
     "description": ""
   },
-  "8": {
+  "agosto": {
     "reps_target": 50,
     "description": ""
   },
-  "9": {
+  "septiembre": {
     "reps_target": 50,
     "description": ""
   },
-  "0": {
+  "octubre": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "noviembre": {
+    "reps_target": 50,
+    "description": ""
+  },
+  "diciembre": {
     "reps_target": 50,
     "description": ""
   }
