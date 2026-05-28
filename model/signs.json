@@ -1,49 +1,29 @@
 {
-  "enero": {
+  "lunes": {
     "reps_target": 50,
     "description": ""
   },
-  "febrero": {
+  "martes": {
     "reps_target": 50,
     "description": ""
   },
-  "marzo": {
+  "miercoles": {
     "reps_target": 50,
     "description": ""
   },
-  "abril": {
+  "jueves": {
     "reps_target": 50,
     "description": ""
   },
-  "mayo": {
+  "viernes": {
     "reps_target": 50,
     "description": ""
   },
-  "junio": {
+  "sabado": {
     "reps_target": 50,
     "description": ""
   },
-  "julio": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "agosto": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "septiembre": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "octubre": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "noviembre": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "diciembre": {
+  "domingo": {
     "reps_target": 50,
     "description": ""
   }
