@@ -1,0 +1,9 @@
+# Dependencias para evaluacion_modelos.ipynb
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+tensorflow
+xgboost
+joblib

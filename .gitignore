@@ -1,0 +1,7 @@
+# Cache de datasets extraidos por evaluacion_onnx_todos.ipynb (se regenera con git archive)
+model/eval_datasets/
+
+# Artefactos de Python / notebooks
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

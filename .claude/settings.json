@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import sklearn; print\\(f'sklearn: {sklearn.__version__}'\\)\")",
+      "Bash(python -c \"import seaborn; print\\(f'seaborn: {seaborn.__version__}'\\)\")",
+      "Bash(python -c \"import matplotlib; print\\(f'matplotlib: {matplotlib.__version__}'\\)\")",
+      "Bash(python -c \"import pandas; print\\(f'pandas: {pandas.__version__}'\\)\")",
+      "Bash(python -c \"import xgboost; print\\(f'xgboost: {xgboost.__version__}'\\)\")",
+      "Bash(python -c \"import joblib; print\\(f'joblib: {joblib.__version__}'\\)\")",
+      "Bash(python -c \"open\\('_pytest.txt','w'\\).write\\('PYOK'\\)\")",
+      "Bash(python -c \"import json,io; json.load\\(open\\('evaluacion_modelos.ipynb',encoding='utf-8'\\)\\); open\\('_nbcheck.txt','w'\\).write\\('NB_JSON_OK cells=%d' % len\\(json.load\\(open\\('evaluacion_modelos.ipynb',encoding='utf-8'\\)\\)['cells']\\)\\)\")",
+      "Bash(python -m pip install -q numpy pandas scikit-learn matplotlib seaborn tensorflow xgboost joblib)",
+      "Bash(python -c \"import numpy,pandas,sklearn,matplotlib,seaborn,joblib; open\\('_deps_ok.txt','w'\\).write\\('CORE_OK'\\)\")",
+      "Bash(python -c \"import json;nb=json.load\\(open\\('evaluacion_modelos.ipynb',encoding='utf-8'\\)\\);print\\('cells:',len\\(nb['cells']\\)\\);[print\\(i,c['cell_type'],repr\\(''.join\\(c['source']\\)[:70]\\)\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(python -c ' *)",
+      "Bash(python _fix_nb.py)",
+      "Bash(rm _fix_nb.py)",
+      "Bash(python -c \"import nbconvert, nbclient; print\\('nbconvert', nbconvert.__version__\\)\")",
+      "Bash(python _run_nb.py)",
+      "Bash(python -c \"import onnx; print\\('onnx', onnx.__version__\\)\")",
+      "Bash(python -c \"import onnxruntime as ort; print\\('onnxruntime', ort.__version__\\)\")",
+      "Bash(mkdir -p _tmp_extract)",
+      "Bash(git archive *)",
+      "Bash(tar -x -C _tmp_extract)",
+      "Bash(python _build_nb.py)",
+      "Bash(python _run2.py)",
+      "Bash(ls -la .gitignore)",
+      "Bash(tail -5 .gitignore)",
+      "Bash(awk '{print $1}')",
+      "Bash(git add *)"
+    ]
+  }
+}

@@ -1,41 +1,9 @@
 {
-  "1": {
+  "masculino": {
     "reps_target": 50,
     "description": ""
   },
-  "2": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "3": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "4": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "5": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "6": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "7": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "8": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "9": {
-    "reps_target": 50,
-    "description": ""
-  },
-  "0": {
+  "femenino": {
     "reps_target": 50,
     "description": ""
   }
