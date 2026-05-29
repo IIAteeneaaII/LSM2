@@ -27,7 +27,9 @@
       "Bash(ls -la .gitignore)",
       "Bash(tail -5 .gitignore)",
       "Bash(awk '{print $1}')",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m 'Modelo de genero + notebooks de evaluacion ONNX y modelos web *)",
+      "Bash(git push *)"
     ]
   }
 }
